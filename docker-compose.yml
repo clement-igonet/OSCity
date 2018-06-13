@@ -1,0 +1,13 @@
+version: "3"
+services:
+  caddy:
+    image: abiosoft/caddy
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2015:2015"
+    volumes:
+      - $PWD/Caddyfile:/etc/Caddyfile
+      # - $HOME/.caddy:/root/.caddy
+      - $PWD/build:/srv
