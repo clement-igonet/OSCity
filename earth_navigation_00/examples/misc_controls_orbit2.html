@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - orbit controls</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				color:#000;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+
+			}
+
+			a {
+				color: red;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - orbit controls example
+		</div>
+
+		<script src="../build/three.js"></script>
+		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/Detector.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var radius = 6371;
+			var camera, controls, scene, renderer, cameraSurvey;
+
+			init();
+			render(); // remove when using next line for animation loop (requestAnimationFrame)
+			//animate();
+
+			function originAxes( radius, height ) {
+				
+				// static originAxes() {
+				let origin = new THREE.Object3D();
+
+				//radiusTop, radiusBottom, height, segmentsRadius, segmentsHeight, openEnded
+				let ge3 = new THREE.CylinderGeometry( radius, radius, height, 4, 1 );
+				let axeXMesh = new THREE.Mesh( ge3,
+					new THREE.MeshBasicMaterial( {
+						color: Math.random() * 0xffffff
+					} )
+				);
+				axeXMesh.rotation.set( 0, 0, Math.PI / 2 );
+				axeXMesh.position.setX( height / 2 );
+				origin.add( axeXMesh );
+				let axeYMesh = new THREE.Mesh( ge3,
+					new THREE.MeshBasicMaterial( {
+						color: Math.random() * 0xffffff,
+						opacity: 0.7
+					} )
+				);
+				axeYMesh.position.setY( height / 2 );
+				origin.add( axeYMesh );
+				let axeZMesh = new THREE.Mesh( ge3,
+					new THREE.MeshBasicMaterial( {
+						color: Math.random() * 0xffffff,
+						opacity: 0.7
+					} )
+				);
+				axeZMesh.rotation.set( Math.PI / 2, 0, 0 );
+				axeZMesh.position.setZ( height / 2 );
+				origin.add( axeZMesh );
+				return origin;
+
+			}
+
+			function init() {
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xcccccc );
+				scene.fog = new THREE.FogExp2( 0xcccccc, 0.00002 );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
+				cameraSurvey = new THREE.Object3D();
+
+				camera.position.setFromSpherical(THREE.Spherical(radius * 1.8, Math.PI / 4, 0));
+
+				scene.add( cameraSurvey );
+
+				// controls
+				var targetS = new THREE.Spherical(radius, Math.PI / 4, 0);
+				var target = new THREE.Vector3();
+				target.setFromSpherical(targetS);
+				controls = new THREE.OrbitControls( camera, renderer.domElement, cameraSurvey );
+				// controls = new THREE.OrbitControls( camera, renderer.domElement, target );
+				controls.maxPolarAngle = 24 * Math.PI / 48; // radians
+				controls.addEventListener( 'change', render ); // remove when using animation loop
+				// enable animation loop when using damping or autorotation
+				// controls.enableDamping = true;
+				// controls.dampingFactor = 0.25;
+
+				// controls.screenSpacePanning = controls.panningTypes.PLAN;
+				controls.screenSpacePanning = controls.movingTypes.ORBITAL;
+				// controls.screenSpacePanning = controls.movingTypes.PAN_PLAN;
+
+				controls.minDistance = 100;
+				controls.maxDistance = radius;
+
+				controls.maxPolarAngle = Math.PI / 2;
+
+				// world
+
+				textureLoader = new THREE.TextureLoader();
+
+				textureLoader.load(
+					'textures/land_ocean_ice_cloud_2048.jpg',
+					function( tex ) {
+						var geometry = new THREE.SphereBufferGeometry( radius, 100, 50 );
+						var material = new THREE.MeshPhongMaterial( {
+							map: tex,
+							color: 0xffffff,
+							shininess: 200,
+							needsUpdate: true
+						} );
+						var mesh = new THREE.Mesh( geometry, material );
+						mesh.position.set( 0, 0, 0 );
+						scene.add( mesh );
+						render();
+					}
+				);
+
+				// target axes
+				var axesCenter = originAxes( 50, 2000 );
+				axesCenter.position.set( 0, 0, 0 );
+				scene.add(axesCenter);
+
+				// target axes
+				axes = originAxes( 50, 2000 );
+				axes.position.set( 0, 0, 0 );
+				scene.add(axes);
+
+				// lights
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 1, 1, 1 );
+				scene.add( light );
+
+				var light = new THREE.DirectionalLight( 0x002288 );
+				light.position.set( -1, -1, -1 );
+				scene.add( light );
+
+				var light = new THREE.AmbientLight( 0x222222 );
+				scene.add( light );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+
+				render();
+
+			}
+
+			function render() {
+
+				// renderer.render( scene, camera );
+				renderer.render( scene, camera );
+
+				if (typeof axes !== "undefined") {
+					// axes.position.set(controls.target);
+					axes.position.setX( controls.target.x );
+					axes.position.setY( controls.target.y );
+					axes.position.setZ( controls.target.z );
+					// axes.rotation.x = controls.targetS.phi;
+					// axes.rotation.y = controls.targetS.theta;
+					// axes.rotation.x = controls.targetS.phi;
+					// axes.rotation.set( controls.targetS.theta );
+				}
+
+			}
+
+		</script>
+
+	</body>
+</html>
